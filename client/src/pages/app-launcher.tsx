@@ -52,6 +52,7 @@ export default function AppLauncher() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/apps"] });
+      form.reset();
       setIsAddDialogOpen(false);
       toast({
         title: "App added successfully",
