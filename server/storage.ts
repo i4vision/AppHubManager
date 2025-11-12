@@ -1,37 +1,32 @@
-import { type User, type InsertUser } from "@shared/schema";
+import { type App, type InsertApp } from "@shared/schema";
 import { randomUUID } from "crypto";
 
-// modify the interface with any CRUD methods
-// you might need
-
 export interface IStorage {
-  getUser(id: string): Promise<User | undefined>;
-  getUserByUsername(username: string): Promise<User | undefined>;
-  createUser(user: InsertUser): Promise<User>;
+  getAllApps(): Promise<App[]>;
+  createApp(app: InsertApp): Promise<App>;
+  deleteApp(id: string): Promise<boolean>;
 }
 
 export class MemStorage implements IStorage {
-  private users: Map<string, User>;
+  private apps: Map<string, App>;
 
   constructor() {
-    this.users = new Map();
+    this.apps = new Map();
   }
 
-  async getUser(id: string): Promise<User | undefined> {
-    return this.users.get(id);
+  async getAllApps(): Promise<App[]> {
+    return Array.from(this.apps.values());
   }
 
-  async getUserByUsername(username: string): Promise<User | undefined> {
-    return Array.from(this.users.values()).find(
-      (user) => user.username === username,
-    );
-  }
-
-  async createUser(insertUser: InsertUser): Promise<User> {
+  async createApp(insertApp: InsertApp): Promise<App> {
     const id = randomUUID();
-    const user: User = { ...insertUser, id };
-    this.users.set(id, user);
-    return user;
+    const app: App = { ...insertApp, id };
+    this.apps.set(id, app);
+    return app;
+  }
+
+  async deleteApp(id: string): Promise<boolean> {
+    return this.apps.delete(id);
   }
 }
 
