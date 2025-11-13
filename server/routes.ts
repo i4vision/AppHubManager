@@ -27,25 +27,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const expectedAccessCode = process.env.ACCESS_CODE;
 
       if (!expectedAccessCode) {
+        console.error("ACCESS_CODE environment variable not set");
         res.status(500).json({ error: "Access code not configured on server" });
         return;
       }
 
       if (!accessCode || accessCode !== expectedAccessCode) {
+        console.error("Invalid access code provided");
         res.status(403).json({ error: "Invalid access code" });
         return;
       }
 
       // Remove access code from data before validation and storage
       const { accessCode: _, ...appData } = req.body;
+      console.log("Creating app with data:", { ...appData, url: "[REDACTED]" });
       const validatedData = insertAppSchema.parse(appData);
       const newApp = await storage.createApp(validatedData);
+      console.log("App created successfully:", newApp.id);
       res.status(201).json(newApp);
     } catch (error) {
+      console.error("Error creating app:", error);
       if (error instanceof Error && error.name === "ZodError") {
         res.status(400).json({ error: "Invalid app data", details: error });
       } else {
-        res.status(500).json({ error: "Failed to create app" });
+        res.status(500).json({ error: "Failed to create app", message: error instanceof Error ? error.message : "Unknown error" });
       }
     }
   });
