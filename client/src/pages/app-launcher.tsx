@@ -234,12 +234,27 @@ export default function AppLauncher() {
         description: "Your app has been added to the launcher.",
       });
     },
-    onError: () => {
-      toast({
-        title: "Failed to add app",
-        description: "There was an error adding your app. Please try again.",
-        variant: "destructive",
-      });
+    onError: (error: any) => {
+      // Check if it's a 403 error (invalid access code)
+      // Error format from apiRequest is: "403: {error message}"
+      const errorMessage = error?.message || "";
+      const is403 = errorMessage.startsWith("403:");
+      
+      if (is403) {
+        toast({
+          title: "Invalid access code",
+          description: "The access code you entered is incorrect. Please try again.",
+          variant: "destructive",
+        });
+        // Clear only the access code field to allow retry without losing other data
+        form.setValue("accessCode", "");
+      } else {
+        toast({
+          title: "Failed to add app",
+          description: "There was an error adding your app. Please try again.",
+          variant: "destructive",
+        });
+      }
     },
   });
 
