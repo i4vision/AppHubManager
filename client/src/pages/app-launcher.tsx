@@ -44,7 +44,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { insertAppSchema, type App, type InsertApp } from "@shared/schema";
-import { Plus, Trash2, Grid3x3 } from "lucide-react";
+import { Plus, Trash2, Grid3x3, Search } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 
 function getFaviconUrl(url: string): string {
@@ -76,11 +76,17 @@ function getDomainName(url: string): string {
 export default function AppLauncher() {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [appToDelete, setAppToDelete] = useState<App | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
   const { toast } = useToast();
 
   const { data: apps, isLoading } = useQuery<App[]>({
     queryKey: ["/api/apps"],
   });
+
+  const filteredApps = apps?.filter((app) =>
+    app.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    app.url.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   const createAppMutation = useMutation({
     mutationFn: async (data: InsertApp) => {
@@ -154,17 +160,18 @@ export default function AppLauncher() {
   return (
     <div className="min-h-screen bg-background">
       <div className="max-w-6xl mx-auto px-6 py-8">
-        <header className="flex items-center justify-between pb-6 border-b mb-8">
-          <h1 className="text-4xl font-bold" data-testid="text-page-title">
-            App Launcher
-          </h1>
-          <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-            <DialogTrigger asChild>
-              <Button data-testid="button-add-app">
-                <Plus className="w-4 h-4 mr-2" />
-                Add New App
-              </Button>
-            </DialogTrigger>
+        <header className="pb-6 border-b mb-8">
+          <div className="flex items-center justify-between mb-6">
+            <h1 className="text-4xl font-bold" data-testid="text-page-title">
+              App Launcher
+            </h1>
+            <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+              <DialogTrigger asChild>
+                <Button data-testid="button-add-app">
+                  <Plus className="w-4 h-4 mr-2" />
+                  Add New App
+                </Button>
+              </DialogTrigger>
             <DialogContent className="max-w-md">
               <DialogHeader>
                 <DialogTitle className="text-2xl font-bold">
@@ -238,6 +245,36 @@ export default function AppLauncher() {
               </Form>
             </DialogContent>
           </Dialog>
+          </div>
+          <div className="relative max-w-md">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input
+              type="text"
+              placeholder="Search apps..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-9"
+              data-testid="input-search-apps"
+            />
+            {searchQuery && (
+              <Button
+                size="sm"
+                variant="ghost"
+                className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 p-0"
+                onClick={() => setSearchQuery("")}
+                data-testid="button-clear-search"
+              >
+                ×
+              </Button>
+            )}
+          </div>
+          {apps && apps.length > 0 && (
+            <p className="text-sm text-muted-foreground mt-3" data-testid="text-results-count">
+              {filteredApps && filteredApps.length !== apps.length
+                ? `Showing ${filteredApps.length} of ${apps.length} apps`
+                : `${apps.length} ${apps.length === 1 ? 'app' : 'apps'}`}
+            </p>
+          )}
         </header>
 
         {isLoading ? (
@@ -264,9 +301,26 @@ export default function AppLauncher() {
               No apps yet. Add your first app to get started.
             </p>
           </div>
+        ) : !filteredApps || filteredApps.length === 0 ? (
+          <div
+            className="flex flex-col items-center justify-center min-h-[400px] text-center"
+            data-testid="no-results-state"
+          >
+            <Search className="w-16 h-16 text-muted-foreground mb-4" />
+            <p className="text-lg text-muted-foreground max-w-md mb-2">
+              No matches for "{searchQuery}"
+            </p>
+            <Button
+              variant="outline"
+              onClick={() => setSearchQuery("")}
+              data-testid="button-clear-search-empty"
+            >
+              Clear search
+            </Button>
+          </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6">
-            {apps.map((app) => (
+            {filteredApps.map((app) => (
               <Tooltip key={app.id}>
                 <TooltipTrigger asChild>
                   <Card
