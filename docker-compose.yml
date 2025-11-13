@@ -7,42 +7,58 @@ services:
       dockerfile: Dockerfile
     container_name: app-launcher
     restart: unless-stopped
-    ports:
-      - "9998:9998"  # Map host port 9998 to container port 9998
+
+    # Remove ports (Traefik will handle HTTPS)
+    # ports:
+    #   - "9998:9998"
+
     environment:
-      # Node environment
       - NODE_ENV=production
-      - PORT=9998
-      
-      # Database connection (using your existing Supabase database)
       - POSTGRES_HOSTNAME=${POSTGRES_HOSTNAME}
       - POSTGRES_DB=${POSTGRES_DB}
       - POSTGRES_USER=${POSTGRES_USER:-postgres}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
       - POSTGRES_PORT=${POSTGRES_PORT:-5432}
       - DATABASE_URL=${DATABASE_URL}
-      
-      # Application secrets
       - ACCESS_CODE=${ACCESS_CODE}
       - SESSION_SECRET=${SESSION_SECRET}
-      
-      # PostgreSQL connection settings
       - PGHOST=${POSTGRES_HOSTNAME}
       - PGDATABASE=${POSTGRES_DB}
       - PGUSER=${POSTGRES_USER:-postgres}
       - PGPASSWORD=${POSTGRES_PASSWORD}
       - PGPORT=${POSTGRES_PORT:-5432}
-    
+
     healthcheck:
       test: ["CMD", "node", "-e", "require('http').get('http://localhost:9998/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 40s
-    
+
     networks:
       - app-network
+      - proxy
+
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=proxy"
+
+      # Router for HTTPS
+      - "traefik.http.routers.byrhub.rule=Host(`byrhub.i4vision.us`)"
+      - "traefik.http.routers.byrhub.entrypoints=websecure"
+      - "traefik.http.routers.byrhub.tls=true"
+
+      # Service definition (internal app port)
+      - "traefik.http.services.byrhub.loadbalancer.server.port=9998"
+
+      # (Optional) redirect HTTP → HTTPS (if you enabled port 80 in Traefik)
+      # - "traefik.http.routers.byrhub-http.rule=Host(`byrhub.i4vision.us`)"
+      # - "traefik.http.routers.byrhub-http.entrypoints=web"
+      # - "traefik.http.routers.byrhub-http.middlewares=redirect-to-https"
+      # - "traefik.http.middlewares.redirect-to-https.redirectscheme.scheme=https"
 
 networks:
   app-network:
     driver: bridge
+  proxy:
+    external: true
