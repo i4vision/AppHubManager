@@ -47,7 +47,7 @@ Preferred communication style: Simple, everyday language.
 - `DELETE /api/apps/:id` - Delete app by ID
 - `PATCH /api/apps/positions` - Update positions for all apps (for drag-and-drop reordering)
 
-**Data Storage**: PostgreSQL database with Drizzle ORM (`DbStorage` class). The storage layer is abstracted behind an `IStorage` interface. All app data persists across server restarts. Database connection configured in `server/db.ts` using Neon PostgreSQL with `@neondatabase/serverless`.
+**Data Storage**: PostgreSQL database with Drizzle ORM (`DbStorage` class). The storage layer is abstracted behind an `IStorage` interface. All app data persists across server restarts. Database connection configured in `server/db.ts` connecting to a self-hosted Supabase instance at `supabase01.i4vision.us` using the standard `postgres` library with SSL support.
 
 **Schema Validation**: Zod schemas defined in the shared layer ensure type safety and validation across both client and server. The `insertAppSchema` validates app creation with proper URL format checking.
 
@@ -67,7 +67,7 @@ Preferred communication style: Simple, everyday language.
 
 **Migration Strategy**: Drizzle Kit configured to output migrations to `./migrations` directory. Database push script available via `npm run db:push`.
 
-**Current Status**: Fully migrated to PostgreSQL. The application uses `DbStorage` class with Drizzle ORM for all database operations. All CRUD operations (create, read, delete) use typed Drizzle queries with proper returning clauses for reliability. Data persists across server restarts.
+**Current Status**: Connected to self-hosted Supabase PostgreSQL database at `supabase01.i4vision.us`. The application uses `DbStorage` class with Drizzle ORM for all database operations. Connection details are configured via environment variables: `POSTGRES_HOSTNAME`, `POSTGRES_DB`, `POSTGRES_PASSWORD`, and optionally `POSTGRES_USER` and `POSTGRES_PORT`. All CRUD operations (create, read, delete, update positions) use typed Drizzle queries with proper returning clauses for reliability. Data persists in the external Supabase database.
 
 ### External Dependencies
 
@@ -84,7 +84,7 @@ Preferred communication style: Simple, everyday language.
 
 **Database & ORM**:
 - Drizzle ORM for type-safe database queries
-- @neondatabase/serverless for PostgreSQL connection
+- postgres library for PostgreSQL connection to self-hosted Supabase
 - Drizzle Zod for schema-to-Zod conversion
 
 **Build & Development Tools**:

@@ -14,18 +14,13 @@ if (process.env.DATABASE_URL) {
   const port = process.env.POSTGRES_PORT || '5432';
   const database = process.env.POSTGRES_DB;
   
-  console.log('Building connection string with hostname:', hostname);
-  
   // Remove protocol prefix if present (https://, http://)
   hostname = hostname.replace(/^https?:\/\//, '');
   
   // Remove any trailing path/slashes
   hostname = hostname.replace(/\/.*$/, '');
   
-  console.log('Cleaned hostname:', hostname);
-  
   connectionString = `postgresql://${username}:${password}@${hostname}:${port}/${database}`;
-  console.log('Connection string (password hidden):', connectionString.replace(/:([^@]+)@/, ':****@'));
 } else {
   throw new Error("Database connection details are required (either DATABASE_URL or POSTGRES_* variables)");
 }
