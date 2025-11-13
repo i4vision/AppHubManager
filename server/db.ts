@@ -2,12 +2,25 @@ import postgres from "postgres";
 import { drizzle } from "drizzle-orm/postgres-js";
 import * as schema from "@shared/schema";
 
-if (!process.env.DATABASE_URL) {
-  throw new Error("DATABASE_URL environment variable is required");
+// Build connection string from individual environment variables or use DATABASE_URL
+let connectionString: string;
+
+if (process.env.DATABASE_URL) {
+  connectionString = process.env.DATABASE_URL;
+} else if (process.env.POSTGRES_HOSTNAME && process.env.POSTGRES_PASSWORD && process.env.POSTGRES_DB) {
+  const username = process.env.POSTGRES_USER || 'postgres';
+  const password = process.env.POSTGRES_PASSWORD;
+  const hostname = process.env.POSTGRES_HOSTNAME;
+  const port = process.env.POSTGRES_PORT || '5432';
+  const database = process.env.POSTGRES_DB;
+  
+  connectionString = `postgresql://${username}:${password}@${hostname}:${port}/${database}`;
+} else {
+  throw new Error("Database connection details are required (either DATABASE_URL or POSTGRES_* variables)");
 }
 
-const client = postgres(process.env.DATABASE_URL, {
-  ssl: 'require',
+const client = postgres(connectionString, {
+  ssl: 'prefer',
   max: 10,
   idle_timeout: 20,
   connect_timeout: 10,
