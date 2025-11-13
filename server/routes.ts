@@ -5,6 +5,11 @@ import { insertAppSchema } from "@shared/schema";
 import { z } from "zod";
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Simple health check endpoint (no database dependency)
+  app.get("/health", (_req, res) => {
+    res.status(200).json({ status: "ok", timestamp: new Date().toISOString() });
+  });
+
   app.get("/api/apps", async (_req, res) => {
     try {
       const apps = await storage.getAllApps();

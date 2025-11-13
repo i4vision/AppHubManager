@@ -1,0 +1,47 @@
+version: '3.8'
+
+services:
+  app-launcher:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: app-launcher
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    environment:
+      # Node environment
+      - NODE_ENV=production
+      
+      # Database connection (using your existing Supabase database)
+      - POSTGRES_HOSTNAME=${POSTGRES_HOSTNAME}
+      - POSTGRES_DB=${POSTGRES_DB}
+      - POSTGRES_USER=${POSTGRES_USER:-postgres}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_PORT=${POSTGRES_PORT:-5432}
+      - DATABASE_URL=${DATABASE_URL}
+      
+      # Application secrets
+      - ACCESS_CODE=${ACCESS_CODE}
+      - SESSION_SECRET=${SESSION_SECRET}
+      
+      # PostgreSQL connection settings
+      - PGHOST=${POSTGRES_HOSTNAME}
+      - PGDATABASE=${POSTGRES_DB}
+      - PGUSER=${POSTGRES_USER:-postgres}
+      - PGPASSWORD=${POSTGRES_PASSWORD}
+      - PGPORT=${POSTGRES_PORT:-5432}
+    
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:5000/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge
