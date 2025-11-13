@@ -8,9 +8,12 @@ services:
     container_name: app-launcher
     restart: unless-stopped
 
-    # Remove ports (Traefik will handle HTTPS)
-    # ports:
-    #   - "9998:9998"
+    ports:
+      - "9998:9998"
+
+    # Allow container to access external database
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
 
     environment:
       - NODE_ENV=production
@@ -38,28 +41,7 @@ services:
 
     networks:
       - app-network
-      - proxy
-
-    labels:
-      - "traefik.enable=true"
-      - "traefik.docker.network=proxy"
-
-      # Router for HTTPS
-      - "traefik.http.routers.byrhub.rule=Host(`byrhub.i4vision.us`)"
-      - "traefik.http.routers.byrhub.entrypoints=websecure"
-      - "traefik.http.routers.byrhub.tls=true"
-
-      # Service definition (internal app port)
-      - "traefik.http.services.byrhub.loadbalancer.server.port=9998"
-
-      # (Optional) redirect HTTP → HTTPS (if you enabled port 80 in Traefik)
-      # - "traefik.http.routers.byrhub-http.rule=Host(`byrhub.i4vision.us`)"
-      # - "traefik.http.routers.byrhub-http.entrypoints=web"
-      # - "traefik.http.routers.byrhub-http.middlewares=redirect-to-https"
-      # - "traefik.http.middlewares.redirect-to-https.redirectscheme.scheme=https"
 
 networks:
   app-network:
     driver: bridge
-  proxy:
-    external: true
