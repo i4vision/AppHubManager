@@ -6,16 +6,29 @@ This is an App Launcher application that provides a clean, utility-focused inter
 
 The application allows users to:
 - View all saved apps in a responsive grid layout with automatic favicon display
-- Add new apps with name, URL, and optional category
+- Add new apps with name, URL, and optional category (requires access code)
 - Delete existing apps
 - Click app cards to navigate to saved URLs in new tabs
 - See app favicons automatically fetched from DuckDuckGo's icon service
-- View full URLs via tooltip on hover (only domain shown in card)
 - Search and filter apps in real-time by name or URL
 - Organize apps by categories with tab-based filtering
 - View apps in grouped sections by category (when "All" tab is selected)
 - Filter apps by specific category or view uncategorized apps
 - Reorder apps via drag-and-drop (enabled only in "All" view without search active)
+
+### Security Features
+
+**Access Code Protection**: Adding new apps requires a valid access code to prevent unauthorized modifications. The access code is:
+- Configured via the `ACCESS_CODE` environment variable on the server
+- Validated server-side (cannot be bypassed)
+- Not stored in the database (used only for authentication)
+- Required for every new app addition
+
+**URL Privacy**: App URLs are completely hidden from the UI:
+- Cards display only app name and favicon
+- No URL text, domain names, or tooltips are shown
+- URLs remain functional when clicking cards (open in new tabs)
+- URLs can still be searched but are not displayed
 
 ## User Preferences
 
@@ -43,7 +56,7 @@ Preferred communication style: Simple, everyday language.
 
 **API Design**: RESTful API with four endpoints:
 - `GET /api/apps` - Retrieve all apps, ordered by position
-- `POST /api/apps` - Create new app
+- `POST /api/apps` - Create new app (requires valid access code in request body, returns 403 on invalid code)
 - `DELETE /api/apps/:id` - Delete app by ID
 - `PATCH /api/apps/positions` - Update positions for all apps (for drag-and-drop reordering)
 
