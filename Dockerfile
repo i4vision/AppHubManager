@@ -16,7 +16,7 @@ COPY . .
 
 # Build the application (frontend + backend)
 # Using build.mjs to exclude vite imports from production bundle
-RUN npm run build || (npx vite build && node build.mjs)
+RUN npx vite build && node build.mjs
 
 # Stage 2: Production stage
 FROM node:20-alpine AS production
