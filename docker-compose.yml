@@ -8,8 +8,9 @@ services:
     container_name: app-launcher
     restart: unless-stopped
 
+    # Keep this while debugging so you can still hit http://server:9998
     ports:
-      - "9998:9998"           # this is fine for now
+      - "9998:9998"
 
     extra_hosts:
       - "host.docker.internal:host-gateway"
@@ -38,9 +39,23 @@ services:
       retries: 3
       start_period: 40s
 
+    # 🔹 Traefik configuration
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.byrhub.rule=Host(`byrhub.i4vision.us`)"
+      - "traefik.http.routers.byrhub.entrypoints=websecure"
+      - "traefik.http.routers.byrhub.tls=true"
+      - "traefik.http.services.byrhub.loadbalancer.server.port=9998"
+
+    # 🔹 Attach to both its own network and the Traefik network
     networks:
       - app-network
+      - proxy
 
 networks:
   app-network:
     driver: bridge
+
+  # This must match the network name your Traefik container uses
+  proxy:
+    external: true
