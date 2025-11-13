@@ -17,7 +17,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/apps", async (req, res) => {
     try {
-      const validatedData = insertAppSchema.parse(req.body);
+      // Validate access code first
+      const accessCode = req.body.accessCode;
+      const expectedAccessCode = process.env.ACCESS_CODE;
+
+      if (!expectedAccessCode) {
+        res.status(500).json({ error: "Access code not configured on server" });
+        return;
+      }
+
+      if (!accessCode || accessCode !== expectedAccessCode) {
+        res.status(403).json({ error: "Invalid access code" });
+        return;
+      }
+
+      // Remove access code from data before validation and storage
+      const { accessCode: _, ...appData } = req.body;
+      const validatedData = insertAppSchema.parse(appData);
       const newApp = await storage.createApp(validatedData);
       res.status(201).json(newApp);
     } catch (error) {
