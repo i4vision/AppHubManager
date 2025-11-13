@@ -56,7 +56,12 @@ import { useToast } from "@/hooks/use-toast";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { insertAppSchema, type App, type InsertApp } from "@shared/schema";
-import { Plus, Trash2, Grid3x3, Search, X, GripVertical } from "lucide-react";
+import { Plus, Trash2, Grid3x3, Search, X, GripVertical, Lock } from "lucide-react";
+import { z } from "zod";
+
+const insertAppWithCodeSchema = insertAppSchema.extend({
+  accessCode: z.string().min(1, "Access code is required"),
+});
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -268,17 +273,19 @@ export default function AppLauncher() {
     },
   });
 
-  const form = useForm<InsertApp>({
-    resolver: zodResolver(insertAppSchema),
+  const form = useForm<InsertApp & { accessCode: string }>({
+    resolver: zodResolver(insertAppWithCodeSchema),
     defaultValues: {
       name: "",
       url: "",
       category: "",
+      accessCode: "",
     },
   });
 
-  const onSubmit = (data: InsertApp) => {
-    createAppMutation.mutate(data);
+  const onSubmit = (data: InsertApp & { accessCode: string }) => {
+    // Send the access code along with app data for backend validation
+    createAppMutation.mutate(data as any);
   };
 
   const handleDelete = (app: App) => {
@@ -393,6 +400,24 @@ export default function AppLauncher() {
                             {...field}
                             value={field.value || ""}
                             data-testid="input-app-category"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="accessCode"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Access Code</FormLabel>
+                        <FormControl>
+                          <Input
+                            type="password"
+                            placeholder="Enter access code"
+                            {...field}
+                            data-testid="input-access-code"
                           />
                         </FormControl>
                         <FormMessage />
