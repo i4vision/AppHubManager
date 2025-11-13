@@ -30,12 +30,48 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import {
+  Avatar,
+  AvatarFallback,
+  AvatarImage,
+} from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { insertAppSchema, type App, type InsertApp } from "@shared/schema";
-import { Plus, Trash2, ExternalLink, Grid3x3 } from "lucide-react";
+import { Plus, Trash2, Grid3x3 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+
+function getFaviconUrl(url: string): string {
+  try {
+    const domain = new URL(url).hostname;
+    return `https://icons.duckduckgo.com/ip3/${domain}.ico`;
+  } catch {
+    return "";
+  }
+}
+
+function getAppInitials(name: string): string {
+  return name
+    .split(" ")
+    .map((word) => word[0])
+    .join("")
+    .toUpperCase()
+    .slice(0, 2);
+}
+
+function getDomainName(url: string): string {
+  try {
+    return new URL(url).hostname.replace(/^www\./, "");
+  } catch {
+    return url;
+  }
+}
 
 export default function AppLauncher() {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
@@ -208,8 +244,13 @@ export default function AppLauncher() {
           <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6">
             {[...Array(8)].map((_, i) => (
               <Card key={i} className="p-6">
-                <Skeleton className="h-6 w-3/4 mb-3" />
-                <Skeleton className="h-4 w-full" />
+                <div className="flex items-center gap-4">
+                  <Skeleton className="h-12 w-12 rounded-full" />
+                  <div className="flex-1">
+                    <Skeleton className="h-5 w-3/4 mb-2" />
+                    <Skeleton className="h-3 w-1/2" />
+                  </div>
+                </div>
               </Card>
             ))}
           </div>
@@ -226,42 +267,56 @@ export default function AppLauncher() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6">
             {apps.map((app) => (
-              <Card
-                key={app.id}
-                className="p-6 cursor-pointer hover-elevate active-elevate-2 relative group transition-all duration-200"
-                onClick={() => handleCardClick(app.url)}
-                data-testid={`card-app-${app.id}`}
-              >
-                <Button
-                  size="icon"
-                  variant="ghost"
-                  className="absolute top-2 right-2 w-8 h-8 opacity-0 group-hover:opacity-100 transition-opacity"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleDelete(app);
-                  }}
-                  data-testid={`button-delete-${app.id}`}
-                >
-                  <Trash2 className="w-4 h-4" />
-                </Button>
-                <div className="flex items-start gap-3">
-                  <ExternalLink className="w-5 h-5 text-muted-foreground flex-shrink-0 mt-0.5" />
-                  <div className="flex-1 min-w-0">
-                    <h3
-                      className="text-lg font-semibold mb-1 truncate"
-                      data-testid={`text-app-name-${app.id}`}
+              <Tooltip key={app.id}>
+                <TooltipTrigger asChild>
+                  <Card
+                    className="p-6 cursor-pointer hover-elevate active-elevate-2 relative group transition-all duration-200"
+                    onClick={() => handleCardClick(app.url)}
+                    data-testid={`card-app-${app.id}`}
+                  >
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDelete(app);
+                      }}
+                      data-testid={`button-delete-${app.id}`}
                     >
-                      {app.name}
-                    </h3>
-                    <p
-                      className="text-sm text-muted-foreground truncate"
-                      data-testid={`text-app-url-${app.id}`}
-                    >
-                      {app.url}
-                    </p>
-                  </div>
-                </div>
-              </Card>
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                    <div className="flex items-center gap-4">
+                      <Avatar className="h-12 w-12">
+                        <AvatarImage
+                          src={getFaviconUrl(app.url)}
+                          alt={app.name}
+                          onError={(e) => {
+                            e.currentTarget.style.display = 'none';
+                          }}
+                        />
+                        <AvatarFallback className="text-sm font-semibold">
+                          {getAppInitials(app.name)}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1 min-w-0">
+                        <h3
+                          className="text-lg font-semibold mb-1 truncate"
+                          data-testid={`text-app-name-${app.id}`}
+                        >
+                          {app.name}
+                        </h3>
+                        <p className="text-sm text-muted-foreground truncate">
+                          {getDomainName(app.url)}
+                        </p>
+                      </div>
+                    </div>
+                  </Card>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p className="text-xs">{app.url}</p>
+                </TooltipContent>
+              </Tooltip>
             ))}
           </div>
         )}

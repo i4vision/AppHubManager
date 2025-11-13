@@ -5,10 +5,12 @@
 This is an App Launcher application that provides a clean, utility-focused interface for organizing and accessing favorite applications. The system follows a design approach inspired by Linear's functionality and Chrome's new tab page simplicity, prioritizing efficiency and ease of use.
 
 The application allows users to:
-- View all saved apps in a responsive grid layout
+- View all saved apps in a responsive grid layout with automatic favicon display
 - Add new apps with name and URL
 - Delete existing apps
-- Click app cards to navigate to saved URLs
+- Click app cards to navigate to saved URLs in new tabs
+- See app favicons automatically fetched from DuckDuckGo's icon service
+- View full URLs via tooltip on hover (only domain shown in card)
 
 ## User Preferences
 
@@ -39,7 +41,7 @@ Preferred communication style: Simple, everyday language.
 - `POST /api/apps` - Create new app
 - `DELETE /api/apps/:id` - Delete app by ID
 
-**Data Storage**: Currently using in-memory storage (`MemStorage` class) with a Map-based implementation. The storage layer is abstracted behind an `IStorage` interface, allowing for easy migration to persistent storage (PostgreSQL with Drizzle ORM is configured but not yet implemented).
+**Data Storage**: PostgreSQL database with Drizzle ORM (`DbStorage` class). The storage layer is abstracted behind an `IStorage` interface. All app data persists across server restarts. Database connection configured in `server/db.ts` using Neon PostgreSQL with `@neondatabase/serverless`.
 
 **Schema Validation**: Zod schemas defined in the shared layer ensure type safety and validation across both client and server. The `insertAppSchema` validates app creation with proper URL format checking.
 
@@ -57,10 +59,7 @@ Preferred communication style: Simple, everyday language.
 
 **Migration Strategy**: Drizzle Kit configured to output migrations to `./migrations` directory. Database push script available via `npm run db:push`.
 
-**Current Status**: Database configuration exists but the application currently runs with in-memory storage. Migration to persistent PostgreSQL storage can be achieved by:
-1. Replacing `MemStorage` with Drizzle-based storage implementation
-2. Ensuring `DATABASE_URL` environment variable is set
-3. Running migrations
+**Current Status**: Fully migrated to PostgreSQL. The application uses `DbStorage` class with Drizzle ORM for all database operations. All CRUD operations (create, read, delete) use typed Drizzle queries with proper returning clauses for reliability. Data persists across server restarts.
 
 ### External Dependencies
 

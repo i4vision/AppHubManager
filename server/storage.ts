@@ -1,5 +1,6 @@
-import { type App, type InsertApp } from "@shared/schema";
-import { randomUUID } from "crypto";
+import { type App, type InsertApp, apps } from "@shared/schema";
+import { db } from "./db";
+import { eq } from "drizzle-orm";
 
 export interface IStorage {
   getAllApps(): Promise<App[]>;
@@ -7,27 +8,20 @@ export interface IStorage {
   deleteApp(id: string): Promise<boolean>;
 }
 
-export class MemStorage implements IStorage {
-  private apps: Map<string, App>;
-
-  constructor() {
-    this.apps = new Map();
-  }
-
+export class DbStorage implements IStorage {
   async getAllApps(): Promise<App[]> {
-    return Array.from(this.apps.values());
+    return await db.select().from(apps);
   }
 
   async createApp(insertApp: InsertApp): Promise<App> {
-    const id = randomUUID();
-    const app: App = { ...insertApp, id };
-    this.apps.set(id, app);
+    const [app] = await db.insert(apps).values(insertApp).returning();
     return app;
   }
 
   async deleteApp(id: string): Promise<boolean> {
-    return this.apps.delete(id);
+    const result = await db.delete(apps).where(eq(apps.id, id)).returning({ id: apps.id });
+    return result.length > 0;
   }
 }
 
-export const storage = new MemStorage();
+export const storage = new DbStorage();
