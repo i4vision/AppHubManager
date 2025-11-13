@@ -15,6 +15,7 @@ The application allows users to:
 - Organize apps by categories with tab-based filtering
 - View apps in grouped sections by category (when "All" tab is selected)
 - Filter apps by specific category or view uncategorized apps
+- Reorder apps via drag-and-drop (enabled only in "All" view without search active)
 
 ## User Preferences
 
@@ -40,10 +41,11 @@ Preferred communication style: Simple, everyday language.
 
 **Server Framework**: Express.js running on Node.js with TypeScript for type safety.
 
-**API Design**: RESTful API with three endpoints:
-- `GET /api/apps` - Retrieve all apps
+**API Design**: RESTful API with four endpoints:
+- `GET /api/apps` - Retrieve all apps, ordered by position
 - `POST /api/apps` - Create new app
 - `DELETE /api/apps/:id` - Delete app by ID
+- `PATCH /api/apps/positions` - Update positions for all apps (for drag-and-drop reordering)
 
 **Data Storage**: PostgreSQL database with Drizzle ORM (`DbStorage` class). The storage layer is abstracted behind an `IStorage` interface. All app data persists across server restarts. Database connection configured in `server/db.ts` using Neon PostgreSQL with `@neondatabase/serverless`.
 
@@ -61,6 +63,7 @@ Preferred communication style: Simple, everyday language.
   - `name` (text, required)
   - `url` (text, required, validated as proper URL)
   - `category` (text, optional, nullable for backward compatibility)
+  - `position` (integer, default 0, for custom drag-and-drop ordering)
 
 **Migration Strategy**: Drizzle Kit configured to output migrations to `./migrations` directory. Database push script available via `npm run db:push`.
 
@@ -72,6 +75,7 @@ Preferred communication style: Simple, everyday language.
 - Radix UI primitives for accessible headless components
 - shadcn/ui for pre-built component implementations
 - Lucide React for icon library
+- @dnd-kit for drag-and-drop functionality (core, sortable, utilities)
 
 **Styling & Design**:
 - Tailwind CSS for utility-first styling
