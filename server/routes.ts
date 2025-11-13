@@ -10,6 +10,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const apps = await storage.getAllApps();
       res.json(apps);
     } catch (error) {
+      console.error("Error fetching apps:", error);
       res.status(500).json({ error: "Failed to fetch apps" });
     }
   });
