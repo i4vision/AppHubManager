@@ -8,10 +8,11 @@ services:
     container_name: app-launcher
     restart: unless-stopped
 
-    # (Optional) Keep this published port while you test.
-    # Once Traefik works, you can delete 'ports:' entirely.
     ports:
-      - "9998:9998"
+      - "9998:9998"           # this is fine for now
+
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
 
     environment:
       - NODE_ENV=production
@@ -30,22 +31,16 @@ services:
       - PGPASSWORD=${POSTGRES_PASSWORD}
       - PGPORT=${POSTGRES_PORT:-5432}
 
-    # 👇 Tell Traefik how to route to this container
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.byrhub.rule=Host(`byrhub.i4vision.us`)"
-      - "traefik.http.routers.byrhub.entrypoints=websecure"
-      - "traefik.http.routers.byrhub.tls=true"
-      # Inside the container your app listens on 9998:
-      - "traefik.http.services.byrhub.loadbalancer.server.port=9998"
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:9998/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
 
     networks:
-      - app-network      # your private app network (already exists)
-      - proxy            # <-- Traefik’s external network (you have this)
+      - app-network
 
 networks:
   app-network:
     driver: bridge
-
-  proxy:
-    external: true
