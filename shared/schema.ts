@@ -7,6 +7,7 @@ export const apps = pgTable("apps", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   name: text("name").notNull(),
   url: text("url").notNull(),
+  category: text("category"),
 });
 
 export const insertAppSchema = createInsertSchema(apps).omit({

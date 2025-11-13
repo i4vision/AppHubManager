@@ -44,8 +44,16 @@ import { useToast } from "@/hooks/use-toast";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { insertAppSchema, type App, type InsertApp } from "@shared/schema";
-import { Plus, Trash2, Grid3x3, Search } from "lucide-react";
+import { Plus, Trash2, Grid3x3, Search, X } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 function getFaviconUrl(url: string): string {
   try {
@@ -77,16 +85,37 @@ export default function AppLauncher() {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [appToDelete, setAppToDelete] = useState<App | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState<string>("all");
+  const [newCategory, setNewCategory] = useState("");
   const { toast } = useToast();
 
   const { data: apps, isLoading } = useQuery<App[]>({
     queryKey: ["/api/apps"],
   });
 
-  const filteredApps = apps?.filter((app) =>
+  const categories = Array.from(
+    new Set(apps?.map((app) => app.category).filter((c): c is string => c !== null && c !== ""))
+  ).sort();
+
+  const searchFilteredApps = apps?.filter((app) =>
     app.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     app.url.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  const filteredApps = searchFilteredApps?.filter((app) => {
+    if (selectedCategory === "all") return true;
+    if (selectedCategory === "uncategorized") return !app.category;
+    return app.category === selectedCategory;
+  });
+
+  const groupedApps: Record<string, App[]> = {};
+  if (selectedCategory === "all" && searchFilteredApps) {
+    searchFilteredApps.forEach((app) => {
+      const cat = app.category || "Uncategorized";
+      if (!groupedApps[cat]) groupedApps[cat] = [];
+      groupedApps[cat].push(app);
+    });
+  }
 
   const createAppMutation = useMutation({
     mutationFn: async (data: InsertApp) => {
@@ -136,6 +165,7 @@ export default function AppLauncher() {
     defaultValues: {
       name: "",
       url: "",
+      category: "",
     },
   });
 
@@ -221,6 +251,24 @@ export default function AppLauncher() {
                       </FormItem>
                     )}
                   />
+                  <FormField
+                    control={form.control}
+                    name="category"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Category (Optional)</FormLabel>
+                        <FormControl>
+                          <Input
+                            placeholder="e.g., Social, Work, Tools"
+                            {...field}
+                            value={field.value || ""}
+                            data-testid="input-app-category"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
                   <div className="flex justify-end gap-3 pt-2">
                     <Button
                       type="button"
@@ -269,11 +317,30 @@ export default function AppLauncher() {
             )}
           </div>
           {apps && apps.length > 0 && (
-            <p className="text-sm text-muted-foreground mt-3" data-testid="text-results-count">
-              {filteredApps && filteredApps.length !== apps.length
-                ? `Showing ${filteredApps.length} of ${apps.length} apps`
-                : `${apps.length} ${apps.length === 1 ? 'app' : 'apps'}`}
-            </p>
+            <div className="mt-4 space-y-3">
+              <Tabs value={selectedCategory} onValueChange={setSelectedCategory}>
+                <TabsList data-testid="tabs-category-filter">
+                  <TabsTrigger value="all" data-testid="tab-all">
+                    All
+                  </TabsTrigger>
+                  {categories.map((cat) => (
+                    <TabsTrigger key={cat} value={cat} data-testid={`tab-${cat.toLowerCase().replace(/\s+/g, '-')}`}>
+                      {cat}
+                    </TabsTrigger>
+                  ))}
+                  <TabsTrigger value="uncategorized" data-testid="tab-uncategorized">
+                    Uncategorized
+                  </TabsTrigger>
+                </TabsList>
+              </Tabs>
+              <p className="text-sm text-muted-foreground" data-testid="text-results-count">
+                {filteredApps && searchQuery && filteredApps.length !== apps.length
+                  ? `Showing ${filteredApps.length} of ${apps.length} apps`
+                  : selectedCategory !== "all"
+                  ? `${filteredApps?.length || 0} app${filteredApps?.length === 1 ? '' : 's'}`
+                  : `${apps.length} app${apps.length === 1 ? '' : 's'}`}
+              </p>
+            </div>
           )}
         </header>
 
@@ -318,9 +385,79 @@ export default function AppLauncher() {
               Clear search
             </Button>
           </div>
+        ) : selectedCategory === "all" && Object.keys(groupedApps).length > 0 ? (
+          <div className="space-y-8">
+            {Object.entries(groupedApps)
+              .sort(([a], [b]) => {
+                if (a === "Uncategorized") return 1;
+                if (b === "Uncategorized") return -1;
+                return a.localeCompare(b);
+              })
+              .map(([category, categoryApps]) => (
+                <div key={category}>
+                  <h2 className="text-xl font-semibold mb-4" data-testid={`category-${category.toLowerCase().replace(/\s+/g, '-')}`}>
+                    {category}
+                  </h2>
+                  <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                    {categoryApps.map((app) => (
+                      <Tooltip key={app.id}>
+                        <TooltipTrigger asChild>
+                          <Card
+                            className="p-6 cursor-pointer hover-elevate active-elevate-2 relative group transition-all duration-200"
+                            onClick={() => handleCardClick(app.url)}
+                            data-testid={`card-app-${app.id}`}
+                          >
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDelete(app);
+                              }}
+                              data-testid={`button-delete-${app.id}`}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                            <div className="flex items-center gap-4">
+                              <Avatar className="h-12 w-12">
+                                <AvatarImage
+                                  src={getFaviconUrl(app.url)}
+                                  alt={app.name}
+                                  onError={(e) => {
+                                    e.currentTarget.style.display = 'none';
+                                  }}
+                                />
+                                <AvatarFallback className="text-sm font-semibold">
+                                  {getAppInitials(app.name)}
+                                </AvatarFallback>
+                              </Avatar>
+                              <div className="flex-1 min-w-0">
+                                <h3
+                                  className="text-lg font-semibold mb-1 truncate"
+                                  data-testid={`text-app-name-${app.id}`}
+                                >
+                                  {app.name}
+                                </h3>
+                                <p className="text-sm text-muted-foreground truncate">
+                                  {getDomainName(app.url)}
+                                </p>
+                              </div>
+                            </div>
+                          </Card>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p className="text-xs">{app.url}</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    ))}
+                  </div>
+                </div>
+              ))}
+          </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6">
-            {filteredApps.map((app) => (
+            {filteredApps?.map((app) => (
               <Tooltip key={app.id}>
                 <TooltipTrigger asChild>
                   <Card
