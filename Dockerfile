@@ -39,8 +39,8 @@ RUN npm ci && npm cache clean --force
 # dist/public/ = frontend assets (index.html, assets/, etc.)
 COPY --from=builder /app/dist ./dist
 
-# Expose port (default 5000)
-EXPOSE 5000
+# Expose port 9998
+EXPOSE 9998
 
 # Create a non-root user for security
 RUN addgroup -g 1001 -S nodejs && \
@@ -51,7 +51,7 @@ USER nodejs
 
 # Health check (uses simple /health endpoint, no database dependency)
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
-  CMD node -e "require('http').get('http://localhost:5000/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"
+  CMD node -e "require('http').get('http://localhost:9998/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"
 
 # Start the application
 CMD ["npm", "start"]
