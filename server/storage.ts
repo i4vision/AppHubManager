@@ -6,6 +6,7 @@ export interface IStorage {
   getAllApps(): Promise<App[]>;
   createApp(app: InsertApp): Promise<App>;
   deleteApp(id: string): Promise<boolean>;
+  updateAppPositions(updates: { id: string; position: number }[]): Promise<void>;
 }
 
 export class DbStorage implements IStorage {
@@ -21,6 +22,12 @@ export class DbStorage implements IStorage {
   async deleteApp(id: string): Promise<boolean> {
     const result = await db.delete(apps).where(eq(apps.id, id)).returning({ id: apps.id });
     return result.length > 0;
+  }
+
+  async updateAppPositions(updates: { id: string; position: number }[]): Promise<void> {
+    for (const update of updates) {
+      await db.update(apps).set({ position: update.position }).where(eq(apps.id, update.id));
+    }
   }
 }
 

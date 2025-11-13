@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar } from "drizzle-orm/pg-core";
+import { integer, pgTable, text, varchar } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -8,10 +8,12 @@ export const apps = pgTable("apps", {
   name: text("name").notNull(),
   url: text("url").notNull(),
   category: text("category"),
+  position: integer("position").notNull().default(0),
 });
 
 export const insertAppSchema = createInsertSchema(apps).omit({
   id: true,
+  position: true,
 }).extend({
   url: z.string().url("Please enter a valid URL"),
 });

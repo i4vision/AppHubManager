@@ -6,11 +6,15 @@ This is an App Launcher application that provides a clean, utility-focused inter
 
 The application allows users to:
 - View all saved apps in a responsive grid layout with automatic favicon display
-- Add new apps with name and URL
+- Add new apps with name, URL, and optional category
 - Delete existing apps
 - Click app cards to navigate to saved URLs in new tabs
 - See app favicons automatically fetched from DuckDuckGo's icon service
 - View full URLs via tooltip on hover (only domain shown in card)
+- Search and filter apps in real-time by name or URL
+- Organize apps by categories with tab-based filtering
+- View apps in grouped sections by category (when "All" tab is selected)
+- Filter apps by specific category or view uncategorized apps
 
 ## User Preferences
 
@@ -56,6 +60,7 @@ Preferred communication style: Simple, everyday language.
   - `id` (varchar, primary key, auto-generated UUID)
   - `name` (text, required)
   - `url` (text, required, validated as proper URL)
+  - `category` (text, optional, nullable for backward compatibility)
 
 **Migration Strategy**: Drizzle Kit configured to output migrations to `./migrations` directory. Database push script available via `npm run db:push`.
 

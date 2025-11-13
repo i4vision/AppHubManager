@@ -1,6 +1,23 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  rectSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import {
@@ -44,7 +61,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { insertAppSchema, type App, type InsertApp } from "@shared/schema";
-import { Plus, Trash2, Grid3x3, Search, X } from "lucide-react";
+import { Plus, Trash2, Grid3x3, Search, X, GripVertical } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -81,6 +98,93 @@ function getDomainName(url: string): string {
   }
 }
 
+interface SortableAppCardProps {
+  app: App;
+  onDelete: (app: App) => void;
+  onClick: (url: string) => void;
+}
+
+function SortableAppCard({ app, onDelete, onClick }: SortableAppCardProps) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+  } = useSortable({ id: app.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  };
+
+  return (
+    <div ref={setNodeRef} style={style}>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Card
+            className="p-6 cursor-pointer hover-elevate active-elevate-2 relative group transition-all duration-200"
+            onClick={() => onClick(app.url)}
+            data-testid={`card-app-${app.id}`}
+          >
+            <Button
+              size="icon"
+              variant="ghost"
+              className="absolute top-2 left-2 cursor-grab active:cursor-grabbing opacity-0 group-hover:opacity-100 transition-opacity"
+              {...attributes}
+              {...listeners}
+              onClick={(e) => e.stopPropagation()}
+              data-testid={`button-drag-${app.id}`}
+            >
+              <GripVertical className="w-4 h-4" />
+            </Button>
+            <Button
+              size="icon"
+              variant="ghost"
+              className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
+              onClick={(e) => {
+                e.stopPropagation();
+                onDelete(app);
+              }}
+              data-testid={`button-delete-${app.id}`}
+            >
+              <Trash2 className="w-4 h-4" />
+            </Button>
+            <div className="flex items-center gap-4">
+              <Avatar className="h-12 w-12">
+                <AvatarImage
+                  src={getFaviconUrl(app.url)}
+                  alt={app.name}
+                  onError={(e) => {
+                    e.currentTarget.style.display = 'none';
+                  }}
+                />
+                <AvatarFallback className="text-sm font-semibold">
+                  {getAppInitials(app.name)}
+                </AvatarFallback>
+              </Avatar>
+              <div className="flex-1 min-w-0">
+                <h3
+                  className="text-lg font-semibold mb-1 truncate"
+                  data-testid={`text-app-name-${app.id}`}
+                >
+                  {app.name}
+                </h3>
+                <p className="text-sm text-muted-foreground truncate">
+                  {getDomainName(app.url)}
+                </p>
+              </div>
+            </div>
+          </Card>
+        </TooltipTrigger>
+        <TooltipContent>
+          <p className="text-xs">{app.url}</p>
+        </TooltipContent>
+      </Tooltip>
+    </div>
+  );
+}
+
 export default function AppLauncher() {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [appToDelete, setAppToDelete] = useState<App | null>(null);
@@ -89,9 +193,19 @@ export default function AppLauncher() {
   const [newCategory, setNewCategory] = useState("");
   const { toast } = useToast();
 
-  const { data: apps, isLoading } = useQuery<App[]>({
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
+  const { data: appsData, isLoading } = useQuery<App[]>({
     queryKey: ["/api/apps"],
   });
+
+  // Sort apps by position
+  const apps = appsData?.sort((a, b) => a.position - b.position);
 
   const categories = Array.from(
     new Set(apps?.map((app) => app.category).filter((c): c is string => c !== null && c !== ""))
@@ -160,6 +274,15 @@ export default function AppLauncher() {
     },
   });
 
+  const updatePositionsMutation = useMutation({
+    mutationFn: async (updates: { id: string; position: number }[]) => {
+      return await apiRequest("PATCH", "/api/apps/positions", updates);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/apps"] });
+    },
+  });
+
   const form = useForm<InsertApp>({
     resolver: zodResolver(insertAppSchema),
     defaultValues: {
@@ -186,6 +309,28 @@ export default function AppLauncher() {
   const handleCardClick = (url: string) => {
     window.open(url, "_blank", "noopener,noreferrer");
   };
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+
+    if (over && active.id !== over.id && apps) {
+      const oldIndex = apps.findIndex((app) => app.id === active.id);
+      const newIndex = apps.findIndex((app) => app.id === over.id);
+
+      const reorderedApps = arrayMove(apps, oldIndex, newIndex);
+      
+      // Update positions for ALL apps
+      const updates = reorderedApps.map((app, index) => ({
+        id: app.id,
+        position: index,
+      }));
+
+      updatePositionsMutation.mutate(updates);
+    }
+  };
+
+  // Enable drag-and-drop only in "All" view with no search
+  const isDragEnabled = selectedCategory === "all" && !searchQuery;
 
   return (
     <div className="min-h-screen bg-background">
@@ -386,75 +531,107 @@ export default function AppLauncher() {
             </Button>
           </div>
         ) : selectedCategory === "all" && Object.keys(groupedApps).length > 0 ? (
-          <div className="space-y-8">
-            {Object.entries(groupedApps)
-              .sort(([a], [b]) => {
-                if (a === "Uncategorized") return 1;
-                if (b === "Uncategorized") return -1;
-                return a.localeCompare(b);
-              })
-              .map(([category, categoryApps]) => (
+          isDragEnabled && apps ? (
+            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+              <SortableContext items={apps.map(app => app.id)} strategy={rectSortingStrategy}>
+                <div className="space-y-8">
+                  {Object.entries(groupedApps)
+                    .sort(([a], [b]) => {
+                      if (a === "Uncategorized") return 1;
+                      if (b === "Uncategorized") return -1;
+                      return a.localeCompare(b);
+                    })
+                    .map(([category, categoryApps]) => (
                 <div key={category}>
                   <h2 className="text-xl font-semibold mb-4" data-testid={`category-${category.toLowerCase().replace(/\s+/g, '-')}`}>
                     {category}
                   </h2>
                   <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6">
                     {categoryApps.map((app) => (
-                      <Tooltip key={app.id}>
-                        <TooltipTrigger asChild>
-                          <Card
-                            className="p-6 cursor-pointer hover-elevate active-elevate-2 relative group transition-all duration-200"
-                            onClick={() => handleCardClick(app.url)}
-                            data-testid={`card-app-${app.id}`}
-                          >
-                            <Button
-                              size="icon"
-                              variant="ghost"
-                              className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleDelete(app);
-                              }}
-                              data-testid={`button-delete-${app.id}`}
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
-                            <div className="flex items-center gap-4">
-                              <Avatar className="h-12 w-12">
-                                <AvatarImage
-                                  src={getFaviconUrl(app.url)}
-                                  alt={app.name}
-                                  onError={(e) => {
-                                    e.currentTarget.style.display = 'none';
-                                  }}
-                                />
-                                <AvatarFallback className="text-sm font-semibold">
-                                  {getAppInitials(app.name)}
-                                </AvatarFallback>
-                              </Avatar>
-                              <div className="flex-1 min-w-0">
-                                <h3
-                                  className="text-lg font-semibold mb-1 truncate"
-                                  data-testid={`text-app-name-${app.id}`}
-                                >
-                                  {app.name}
-                                </h3>
-                                <p className="text-sm text-muted-foreground truncate">
-                                  {getDomainName(app.url)}
-                                </p>
-                              </div>
-                            </div>
-                          </Card>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p className="text-xs">{app.url}</p>
-                        </TooltipContent>
-                      </Tooltip>
+                      <SortableAppCard
+                        key={app.id}
+                        app={app}
+                        onDelete={handleDelete}
+                        onClick={handleCardClick}
+                      />
                     ))}
                   </div>
                 </div>
               ))}
-          </div>
+                </div>
+              </SortableContext>
+            </DndContext>
+          ) : (
+            <div className="space-y-8">
+              {Object.entries(groupedApps)
+                .sort(([a], [b]) => {
+                  if (a === "Uncategorized") return 1;
+                  if (b === "Uncategorized") return -1;
+                  return a.localeCompare(b);
+                })
+                .map(([category, categoryApps]) => (
+                  <div key={category}>
+                    <h2 className="text-xl font-semibold mb-4" data-testid={`category-${category.toLowerCase().replace(/\s+/g, '-')}`}>
+                      {category}
+                    </h2>
+                    <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                      {categoryApps.map((app) => (
+                        <Tooltip key={app.id}>
+                          <TooltipTrigger asChild>
+                            <Card
+                              className="p-6 cursor-pointer hover-elevate active-elevate-2 relative group transition-all duration-200"
+                              onClick={() => handleCardClick(app.url)}
+                              data-testid={`card-app-${app.id}`}
+                            >
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleDelete(app);
+                                }}
+                                data-testid={`button-delete-${app.id}`}
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                              <div className="flex items-center gap-4">
+                                <Avatar className="h-12 w-12">
+                                  <AvatarImage
+                                    src={getFaviconUrl(app.url)}
+                                    alt={app.name}
+                                    onError={(e) => {
+                                      e.currentTarget.style.display = 'none';
+                                    }}
+                                  />
+                                  <AvatarFallback className="text-sm font-semibold">
+                                    {getAppInitials(app.name)}
+                                  </AvatarFallback>
+                                </Avatar>
+                                <div className="flex-1 min-w-0">
+                                  <h3
+                                    className="text-lg font-semibold mb-1 truncate"
+                                    data-testid={`text-app-name-${app.id}`}
+                                  >
+                                    {app.name}
+                                  </h3>
+                                  <p className="text-sm text-muted-foreground truncate">
+                                    {getDomainName(app.url)}
+                                  </p>
+                                </div>
+                              </div>
+                            </Card>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p className="text-xs">{app.url}</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+            </div>
+          )
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6">
             {filteredApps?.map((app) => (
