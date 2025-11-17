@@ -56,7 +56,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { insertAppSchema, type App, type InsertApp } from "@shared/schema";
-import { Plus, Trash2, Grid3x3, Search, X, GripVertical, Lock } from "lucide-react";
+import { Plus, Trash2, Grid3x3, Search, X, GripVertical, Lock, AppWindow } from "lucide-react";
 import { z } from "zod";
 
 const insertAppWithCodeSchema = insertAppSchema.extend({
@@ -157,13 +157,13 @@ function SortableAppCard({ app, onDelete, onClick }: SortableAppCardProps) {
                 e.currentTarget.style.display = 'none';
               }}
             />
-            <AvatarFallback className="text-sm font-semibold">
-              {getAppInitials(app.name)}
+            <AvatarFallback>
+              <AppWindow className="w-6 h-6" />
             </AvatarFallback>
           </Avatar>
           <div className="flex-1 min-w-0">
             <h3
-              className="text-lg font-semibold truncate"
+              className="text-lg font-semibold break-words"
               data-testid={`text-app-name-${app.id}`}
             >
               {app.name}
@@ -628,13 +628,13 @@ export default function AppLauncher() {
                                   e.currentTarget.style.display = 'none';
                                 }}
                               />
-                              <AvatarFallback className="text-sm font-semibold">
-                                {getAppInitials(app.name)}
+                              <AvatarFallback>
+                                <AppWindow className="w-6 h-6" />
                               </AvatarFallback>
                             </Avatar>
                             <div className="flex-1 min-w-0">
                               <h3
-                                className="text-lg font-semibold truncate"
+                                className="text-lg font-semibold break-words"
                                 data-testid={`text-app-name-${app.id}`}
                               >
                                 {app.name}
@@ -678,13 +678,13 @@ export default function AppLauncher() {
                         e.currentTarget.style.display = 'none';
                       }}
                     />
-                    <AvatarFallback className="text-sm font-semibold">
-                      {getAppInitials(app.name)}
+                    <AvatarFallback>
+                      <AppWindow className="w-6 h-6" />
                     </AvatarFallback>
                   </Avatar>
                   <div className="flex-1 min-w-0">
                     <h3
-                      className="text-lg font-semibold truncate"
+                      className="text-lg font-semibold break-words"
                       data-testid={`text-app-name-${app.id}`}
                     >
                       {app.name}
