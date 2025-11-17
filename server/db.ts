@@ -3,11 +3,10 @@ import { drizzle } from "drizzle-orm/postgres-js";
 import * as schema from "@shared/schema";
 
 // Build connection string from individual environment variables or use DATABASE_URL
+// Prioritize POSTGRES_* variables when available (for custom database connections)
 let connectionString: string;
 
-if (process.env.DATABASE_URL) {
-  connectionString = process.env.DATABASE_URL;
-} else if (process.env.POSTGRES_HOSTNAME && process.env.POSTGRES_PASSWORD && process.env.POSTGRES_DB) {
+if (process.env.POSTGRES_HOSTNAME && process.env.POSTGRES_PASSWORD && process.env.POSTGRES_DB) {
   const username = process.env.POSTGRES_USER || 'postgres';
   const password = process.env.POSTGRES_PASSWORD;
   let hostname = process.env.POSTGRES_HOSTNAME;
@@ -21,6 +20,8 @@ if (process.env.DATABASE_URL) {
   hostname = hostname.replace(/\/.*$/, '');
   
   connectionString = `postgresql://${username}:${password}@${hostname}:${port}/${database}`;
+} else if (process.env.DATABASE_URL) {
+  connectionString = process.env.DATABASE_URL;
 } else {
   throw new Error("Database connection details are required (either DATABASE_URL or POSTGRES_* variables)");
 }
