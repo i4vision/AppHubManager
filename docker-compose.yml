@@ -36,6 +36,7 @@ services:
     # 🔹 Traefik configuration
     labels:
       - "traefik.enable=true"
+      - "traefik.docker.network=proxy"
       - "traefik.http.routers.byrhub.rule=Host(`byrhub.i4vision.us`)"
       - "traefik.http.routers.byrhub.entrypoints=websecure"
       - "traefik.http.routers.byrhub.tls=true"
