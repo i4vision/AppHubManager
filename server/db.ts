@@ -10,7 +10,7 @@ if (process.env.POSTGRES_HOSTNAME && process.env.POSTGRES_PASSWORD && process.en
   const username = process.env.POSTGRES_USER || 'postgres';
   const password = process.env.POSTGRES_PASSWORD;
   let hostname = process.env.POSTGRES_HOSTNAME;
-  const port = process.env.POSTGRES_PORT || '5432';
+  const port = process.env.POSTGRES_PORT;
   const database = process.env.POSTGRES_DB;
   
   // Remove protocol prefix if present (https://, http://)
@@ -19,7 +19,12 @@ if (process.env.POSTGRES_HOSTNAME && process.env.POSTGRES_PASSWORD && process.en
   // Remove any trailing path/slashes
   hostname = hostname.replace(/\/.*$/, '');
   
-  connectionString = `postgresql://${username}:${password}@${hostname}:${port}/${database}`;
+  // Build connection string with or without port
+  if (port) {
+    connectionString = `postgresql://${username}:${password}@${hostname}:${port}/${database}`;
+  } else {
+    connectionString = `postgresql://${username}:${password}@${hostname}/${database}`;
+  }
 } else if (process.env.DATABASE_URL) {
   connectionString = process.env.DATABASE_URL;
 } else {
